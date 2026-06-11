@@ -78,19 +78,23 @@ export function HomeIcon({ className }: IconProps) {
 }
 
 export function HornIcon({ className }: IconProps) {
-  // classic squeeze-bulb horn (NOT a speaker shape - it gets mistaken for a mute button)
+  // toy squeeze-horn at 45 degrees with an oversized bulb: deliberately nothing
+  // like the horizontal box-and-cone speaker glyph used by the mute button
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      {/* bell, pointing up-right */}
       <path
-        d="M8 12.2 L12 12.2 L18 8.6 Q19.6 7.6 19.6 9.5 L19.6 18.5 Q19.6 20.4 18 19.4 L12 15.8 L8 15.8 Z"
+        d="M9.4 12.4 L15.5 2.5 Q16.3 1.3 17.4 2.2 L21.1 5.4 Q22.2 6.4 20.9 7.2 L11.6 14.6 Q10.2 15.6 9.4 14.2 Z"
         fill="#fff"
         stroke={NAVY}
         strokeWidth={1.8}
         strokeLinejoin="round"
       />
-      <circle cx={5.4} cy={14} r={3.4} fill="#ffd43b" stroke={NAVY} strokeWidth={1.8} />
+      {/* big squeeze bulb */}
+      <circle cx={8.2} cy={16} r={4.8} fill="#ffd43b" stroke={NAVY} strokeWidth={1.8} />
+      {/* honk! burst */}
       <path
-        d="M20 5.5 L21.6 3.6 M22 9 L23.6 8.2 M16.6 4.6 L17.4 2.6"
+        d="M19.2 1.9 L20.2 0.7 M21.9 3.9 L23.3 3.2 M22.3 8.6 L23.6 9.1"
         fill="none"
         stroke={NAVY}
         strokeWidth={1.8}
