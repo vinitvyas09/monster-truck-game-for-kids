@@ -79,28 +79,33 @@ export function GarageScreen({ trucks, active, onSelect, onChange, onGo }: Props
         </button>
       </div>
 
-      {/* the truck on stage: tap it to honk */}
-      <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center">
-        <button
-          aria-label="Honk"
-          className="truck-idle h-full max-h-[58vh] w-auto max-w-[90vw] cursor-pointer"
-          onPointerDown={() => {
-            unlockAudio();
-            voice(truck.body);
-            setBoing((b) => b + 1);
-            setHonking(true);
-            if (honkTimer.current) clearTimeout(honkTimer.current);
-            honkTimer.current = setTimeout(() => setHonking(false), 1000);
-          }}
-        >
-          <div key={boing} className={`boing h-full w-full ${honking ? "voice-flash" : ""}`}>
-            <MonsterTruck config={truck} className="pointer-events-none h-full w-full drop-shadow-[0_10px_0_rgba(29,43,79,0.12)]" />
-          </div>
-        </button>
+      {/* the truck on stage, wheels anchored to the grass horizon (the ground
+          strip is 30% tall, so this stage ends exactly at its top edge);
+          the 8% downward shift compensates for the art's padding below the
+          wheels so the tires touch the grass on every screen shape */}
+      <div className="pointer-events-none absolute inset-x-0 top-[16%] bottom-[30%] z-10 flex items-end justify-center">
+        <div className="aspect-[4/3] h-full max-w-[92vw] translate-y-[8%]">
+          <button
+            aria-label="Honk"
+            className="truck-idle pointer-events-auto h-full w-full cursor-pointer"
+            onPointerDown={() => {
+              unlockAudio();
+              voice(truck.body);
+              setBoing((b) => b + 1);
+              setHonking(true);
+              if (honkTimer.current) clearTimeout(honkTimer.current);
+              honkTimer.current = setTimeout(() => setHonking(false), 1000);
+            }}
+          >
+            <div key={boing} className={`boing h-full w-full ${honking ? "voice-flash" : ""}`}>
+              <MonsterTruck config={truck} className="pointer-events-none h-full w-full drop-shadow-[0_10px_0_rgba(29,43,79,0.12)]" />
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* bottom controls */}
-      <div className="safe-b safe-x relative z-10 flex flex-wrap items-center justify-center gap-2.5 px-3 pb-4 pt-1 sm:gap-3 sm:pb-5">
+      <div className="safe-b safe-x relative z-10 mt-auto flex flex-wrap items-center justify-center gap-2.5 px-3 pb-4 pt-1 sm:gap-3 sm:pb-5">
         <div className="flex gap-2 rounded-full border-4 border-[#1d2b4f] bg-white/85 px-2.5 py-1.5 sm:gap-2.5">
           {PALETTE.map((p) => (
             <button
