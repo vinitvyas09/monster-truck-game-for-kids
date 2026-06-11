@@ -227,6 +227,16 @@ export function fireworkPop() {
   tone("triangle", 1500, 0.3, 0.2, { slideTo: 480, delay: 0.03 });
 }
 
+/** Big victory melody for multi-flip landings. */
+export function victory() {
+  const notes = [523, 659, 784, 1046, 784, 1046, 1318, 1568];
+  notes.forEach((f, i) => {
+    tone("square", f, i >= 6 ? 0.4 : 0.14, 0.2, { delay: 0.1 + i * 0.11 });
+    tone("triangle", f * 2, i >= 6 ? 0.4 : 0.14, 0.12, { delay: 0.1 + i * 0.11 });
+  });
+  noiseBurst(0.9, 2000, 0.12, 600, 0.1);
+}
+
 export function slam(big: boolean) {
   if (big) {
     tone("sine", 64, 0.45, 0.9, { slideTo: 24 });

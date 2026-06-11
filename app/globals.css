@@ -316,15 +316,42 @@ body {
   }
 }
 
+/* triple strobe pulse on multi-flip landings */
 .sky-flash {
-  animation: skyflash 0.45s ease-out;
+  animation: skyflash 1.1s ease-out;
 }
 @keyframes skyflash {
+  0% {
+    opacity: 0.85;
+  }
+  18% {
+    opacity: 0;
+  }
+  36% {
+    opacity: 0.55;
+  }
+  54% {
+    opacity: 0;
+  }
+  72% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.fx-confetti {
+  animation: fxconfetti 2s linear forwards;
+}
+@keyframes fxconfetti {
   from {
-    opacity: 0.8;
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
   }
   to {
-    opacity: 0;
+    transform: translate(var(--dx), 700px) rotate(var(--rot));
+    opacity: 0.85;
   }
 }
 

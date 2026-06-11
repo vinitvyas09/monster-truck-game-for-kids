@@ -374,7 +374,7 @@ export function DriveScreen({ config, mode, stars, onStars, onHome }: DriveProps
       flashWrap.appendChild(core);
       fx.appendChild(flashWrap);
       setTimeout(() => flashWrap.remove(), 700);
-      const m = 12;
+      const m = 16;
       for (let i = 0; i < m; i++) {
         const wrap = document.createElementNS("http://www.w3.org/2000/svg", "g");
         wrap.style.transform = `translate(${x}px, ${y}px)`;
@@ -382,7 +382,7 @@ export function DriveScreen({ config, mode, stars, onStars, onHome }: DriveProps
         el.setAttribute("r", String(4 + (i % 3) * 2));
         el.setAttribute("fill", i % 3 === 2 ? "#ffffff" : color);
         const a = (i / m) * Math.PI * 2;
-        const d = 95 + Math.random() * 45;
+        const d = 120 + Math.random() * 70;
         el.classList.add("fx-pop");
         el.style.setProperty("--dx", `${(Math.cos(a) * d).toFixed(0)}px`);
         el.style.setProperty("--dy", `${(Math.sin(a) * d).toFixed(0)}px`);
@@ -397,11 +397,33 @@ export function DriveScreen({ config, mode, stars, onStars, onHome }: DriveProps
     function fireworks(count: number) {
       for (let k = 0; k < count; k++) {
         setTimeout(() => {
-          const x = 330 + Math.random() * 340;
-          const y = 70 + Math.random() * 160;
+          const x = 300 + Math.random() * 400;
+          const y = 60 + Math.random() * 190;
           bloom(x, y, PALETTE[(Math.random() * PALETTE.length) | 0].main);
           sfx.fireworkPop();
-        }, k * 170);
+        }, k * 150 + Math.random() * 60);
+      }
+    }
+
+    /** Confetti rain across the whole sky. */
+    function confettiRain(count: number) {
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => {
+          const wrap = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          wrap.style.transform = `translate(${(120 + Math.random() * 760).toFixed(0)}px, -24px)`;
+          const el = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          el.setAttribute("width", "13");
+          el.setAttribute("height", "8");
+          el.setAttribute("rx", "2");
+          el.setAttribute("fill", PALETTE[i % PALETTE.length].main);
+          el.classList.add("fx-confetti");
+          el.style.setProperty("--dx", `${(Math.random() * 140 - 70).toFixed(0)}px`);
+          el.style.setProperty("--rot", `${(Math.random() * 720 - 360).toFixed(0)}deg`);
+          el.style.animationDuration = `${(1.7 + Math.random() * 0.9).toFixed(2)}s`;
+          wrap.appendChild(el);
+          fx.appendChild(wrap);
+          setTimeout(() => wrap.remove(), 2700);
+        }, i * 38);
       }
     }
 
@@ -670,15 +692,19 @@ export function DriveScreen({ config, mode, stars, onStars, onHome }: DriveProps
               st.shock = true; // flatten anything close (applied below, once cars are placed)
             }
             if (st.flipping) {
-              addStars(2 * st.flipsN, truckSX, st.y - 60);
+              addStars(st.flipsN >= 3 ? 15 : st.flipsN === 2 ? 10 : 2, truckSX, st.y - 60);
               spawnFx(truckSX, st.y - 130, PALETTE.map((p) => p.main), 20, 190);
               if (st.flipsN >= 2) {
-                // double/triple flip: full fireworks show
+                // double/triple flip: the FULL show — strobing sky, fireworks
+                // volley, confetti rain, victory melody, double world-hop
                 sfx.fanfare();
+                sfx.victory();
                 flashRef.current?.classList.remove("sky-flash");
                 void flashRef.current?.offsetWidth;
                 flashRef.current?.classList.add("sky-flash");
-                fireworks(st.flipsN === 2 ? 5 : 9);
+                fireworks(st.flipsN === 2 ? 14 : 22);
+                confettiRain(st.flipsN === 2 ? 44 : 70);
+                setTimeout(hopCars, 280);
               }
             }
           } else if (st.airT > 0.1) {
@@ -1126,9 +1152,11 @@ export function DriveScreen({ config, mode, stars, onStars, onHome }: DriveProps
               <StarIcon className="-ml-1.5 h-7 w-7" />
             </div>
           </div>
-          <div className="toy-pill flex min-w-[110px] items-center justify-center gap-2 px-4 py-1.5">
-            <StarIcon className="h-9 w-9" />
-            <span className="text-4xl font-bold tabular-nums">{stars}</span>
+          <div className="toy-pill flex min-w-[110px] items-center justify-center px-4 py-1.5">
+            <div key={stars} className="boing flex items-center gap-2">
+              <StarIcon className="h-9 w-9" />
+              <span className="text-4xl font-bold tabular-nums">{stars}</span>
+            </div>
           </div>
         </div>
 
