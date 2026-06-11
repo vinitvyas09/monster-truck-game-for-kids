@@ -132,6 +132,18 @@ export function StarIcon({ className, fill = "#ffd43b" }: IconProps & { fill?: s
   );
 }
 
+/** One fast-forward chevron of the speed setting; greyed out when not reached. */
+export function SpeedChevron({ className, on }: IconProps & { on: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <polygon
+        points="6,3.5 14.5,12 6,20.5 10.5,20.5 19,12 10.5,3.5"
+        fill={on ? "#1d2b4f" : "#c9d2e0"}
+      />
+    </svg>
+  );
+}
+
 export function SpeakerIcon({ className, muted }: IconProps & { muted: boolean }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>

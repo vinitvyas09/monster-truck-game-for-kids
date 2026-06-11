@@ -5,7 +5,7 @@ import type { SpeedMode, TruckConfig } from "@/lib/trucks";
 import { BODIES, DECALS, PALETTE, SPEED_MODES, WHEELS, cycle, randomTruck } from "@/lib/trucks";
 import { isMuted, pop, setMuted, unlockAudio, voice, whoosh } from "@/lib/audio";
 import { MonsterTruck } from "./TruckArt";
-import { BoltIcon, CloudArt, DiceIcon, FlameIcon, PlayIcon, SpeakerIcon, SunArt, TruckIcon, WheelIcon } from "./icons";
+import { CloudArt, DiceIcon, FlameIcon, PlayIcon, SpeakerIcon, SpeedChevron, SunArt, TruckIcon, WheelIcon } from "./icons";
 
 type Props = {
   trucks: TruckConfig[];
@@ -100,8 +100,8 @@ export function GarageScreen({ trucks, active, speedMode, onSpeedMode, onSelect,
             }}
           >
             <span className="flex items-center">
-              {SPEED_MODES.slice(0, SPEED_MODES.indexOf(speedMode) + 1).map((m) => (
-                <BoltIcon key={m} className="-ml-1.5 h-6 w-6 first:ml-0" />
+              {SPEED_MODES.map((m, i) => (
+                <SpeedChevron key={m} on={i <= SPEED_MODES.indexOf(speedMode)} className="-ml-1.5 h-6 w-6 first:ml-0" />
               ))}
             </span>
           </button>

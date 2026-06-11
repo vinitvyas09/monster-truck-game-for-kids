@@ -633,13 +633,13 @@ export function DriveScreen({ config, mode, stars, onStars, onHome }: DriveProps
       // --- big air: slide whistle up, backflip at turbo speed, slam landing ---
       let visualAng = st.ang;
       if (!st.airborne && !grounded) {
+        // terrain launch (ramp/cliff/hill): big air, whistle and slam, but no
+        // rotation — flips are the kid's trick, jump-button only
         st.airborne = true;
         st.airT = 0;
         st.liftSpeed = st.speed;
-        st.flipping = st.liftSpeed > FLIP_SPEED;
-        st.flipsN = st.flipping ? 1 : 0;
-        st.flipT0 = 0.08;
-        st.flipT1 = 0.53;
+        st.flipping = false;
+        st.flipsN = 0;
       }
       if (st.airborne) {
         st.airT += dt;
