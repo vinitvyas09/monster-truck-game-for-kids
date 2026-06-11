@@ -192,8 +192,14 @@ function WashArchFront() {
 
 type TurboPhase = "ready" | "active" | "charging";
 
-export function DriveScreen({ config, onHome }: { config: TruckConfig; onHome: () => void }) {
-  const [stars, setStars] = useState(0);
+type DriveProps = {
+  config: TruckConfig;
+  stars: number;
+  onStars: (n: number) => void;
+  onHome: () => void;
+};
+
+export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
   const [targetColor, setTargetColor] = useState<PaletteEntry>(() => carColor(1 + Math.floor(Math.random() * 3)));
   const [turboUI, setTurboUI] = useState<TurboPhase>("ready");
   const [started, setStarted] = useState(false);
@@ -215,14 +221,13 @@ export function DriveScreen({ config, onHome }: { config: TruckConfig; onHome: (
   const gasPts = useRef<Set<number>>(new Set());
   const turboRef = useRef<{ phase: TurboPhase; until: number }>({ phase: "ready", until: 0 });
   const targetRef = useRef(targetColor);
-  const starsRef = useRef(0);
+  const starsRef = useRef(stars); // mount-time copy; the loop owns it from here
   const crushedRef = useRef<Set<number>>(new Set());
   const crushedBusRef = useRef<Set<number>>(new Set());
   const rescuedRef = useRef<Set<number>>(new Set());
   const truckSXRef = useRef(300);
   const scareRef = useRef<() => void>(() => {});
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const homeHold = useRef<ReturnType<typeof setTimeout> | null>(null);
   const jumpAt = useRef(0); // timestamp of last jump press; buffered so mashing pogo-hops on landing
 
   useEffect(() => {
@@ -329,7 +334,7 @@ export function DriveScreen({ config, onHome }: { config: TruckConfig; onHome: (
         sfx.fanfare();
         spawnFx(fxX, fxY - 110, PALETTE.map((p) => p.main), 30, 250);
       }
-      setStars(starsRef.current);
+      onStars(starsRef.current);
     }
 
     function newTarget(nearN: number) {
@@ -887,20 +892,15 @@ export function DriveScreen({ config, onHome }: { config: TruckConfig; onHome: (
       <div className="pointer-events-none absolute inset-0">
         <div className="safe-t safe-x flex items-start justify-between gap-2 p-3 sm:p-4">
           <button
-            aria-label="Back to garage (hold)"
+            aria-label="Back to garage"
             className="toy-btn pointer-events-auto h-16 w-16 bg-white/90 p-2.5"
             onPointerDown={(e) => {
-              // hold ~half a second to exit, so a palm-mash can't eject mid-rampage
+              // plain tap: stars persist in Game state, so an accidental exit costs nothing
               e.stopPropagation();
               sfx.unlockAudio();
-              homeHold.current = setTimeout(() => {
-                sfx.pop();
-                onHome();
-              }, 450);
+              sfx.pop();
+              onHome();
             }}
-            onPointerUp={() => homeHold.current && clearTimeout(homeHold.current)}
-            onPointerLeave={() => homeHold.current && clearTimeout(homeHold.current)}
-            onPointerCancel={() => homeHold.current && clearTimeout(homeHold.current)}
           >
             <HomeIcon className="h-full w-full" />
           </button>

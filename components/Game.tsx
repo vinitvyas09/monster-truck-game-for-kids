@@ -10,6 +10,8 @@ export default function Game() {
   const [screen, setScreen] = useState<"garage" | "drive">("garage");
   const [trucks, setTrucks] = useState<TruckConfig[]>(DEFAULT_GARAGE);
   const [active, setActive] = useState(0);
+  // stars live here so an accidental trip to the garage never wipes the count
+  const [stars, setStars] = useState(0);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -47,6 +49,11 @@ export default function Game() {
       onGo={() => setScreen("drive")}
     />
   ) : (
-    <DriveScreen config={trucks[active]} onHome={() => setScreen("garage")} />
+    <DriveScreen
+      config={trucks[active]}
+      stars={stars}
+      onStars={setStars}
+      onHome={() => setScreen("garage")}
+    />
   );
 }
