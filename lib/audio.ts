@@ -3,6 +3,32 @@
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let muted: boolean | null = null;
+
+function mutedNow(): boolean {
+  if (muted === null) {
+    try {
+      muted = localStorage.getItem("monster-garage-muted") === "1";
+    } catch {
+      muted = false;
+    }
+  }
+  return muted;
+}
+
+export function isMuted(): boolean {
+  return typeof window === "undefined" ? false : mutedNow();
+}
+
+export function setMuted(m: boolean) {
+  muted = m;
+  try {
+    localStorage.setItem("monster-garage-muted", m ? "1" : "0");
+  } catch {
+    // persistence is best-effort
+  }
+  if (ctx && master) master.gain.setTargetAtTime(m ? 0 : 0.5, ctx.currentTime, 0.02);
+}
 
 export function unlockAudio() {
   if (typeof window === "undefined") return;
@@ -13,7 +39,7 @@ export function unlockAudio() {
     if (!AC) return;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = 0.5;
+    master.gain.value = mutedNow() ? 0 : 0.5;
     master.connect(ctx.destination);
   }
   // iOS moves a running context to "interrupted" after Siri/alarms/app switches

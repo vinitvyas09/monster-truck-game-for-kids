@@ -5,7 +5,7 @@ import type { PaletteEntry, TruckConfig } from "@/lib/trucks";
 import { PALETTE } from "@/lib/trucks";
 import * as sfx from "@/lib/audio";
 import { AXLE_Y, EXHAUST, TruckArt, WHEEL_R, starPoints } from "./TruckArt";
-import { BoltIcon, CloudArt, HomeIcon, HornIcon, PlayIcon, StarIcon, SunArt, UpIcon } from "./icons";
+import { BoltIcon, CloudArt, HomeIcon, HornIcon, SpeakerIcon, StarIcon, SunArt, UpIcon } from "./icons";
 
 const NAVY = "#1d2b4f";
 const VB_W = 1000;
@@ -203,6 +203,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
   const [targetColor, setTargetColor] = useState<PaletteEntry>(() => carColor(1 + Math.floor(Math.random() * 3)));
   const [turboUI, setTurboUI] = useState<TurboPhase>("ready");
   const [started, setStarted] = useState(false);
+  const [muted, setMutedUI] = useState(() => sfx.isMuted());
 
   const rootRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -961,19 +962,37 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
       {/* UI overlay */}
       <div className="pointer-events-none absolute inset-0">
         <div className="safe-t safe-x flex items-start justify-between gap-2 p-3 sm:p-4">
-          <button
-            aria-label="Back to garage"
-            className="toy-btn pointer-events-auto h-16 w-16 bg-white/90 p-2.5"
-            onPointerDown={(e) => {
-              // plain tap: stars persist in Game state, so an accidental exit costs nothing
-              e.stopPropagation();
-              sfx.unlockAudio();
-              sfx.pop();
-              onHome();
-            }}
-          >
-            <HomeIcon className="h-full w-full" />
-          </button>
+          <div className="flex items-start gap-2">
+            <button
+              aria-label="Back to garage"
+              className="toy-btn pointer-events-auto h-16 w-16 bg-white/90 p-2.5"
+              onPointerDown={(e) => {
+                // plain tap: stars persist in Game state, so an accidental exit costs nothing
+                e.stopPropagation();
+                sfx.unlockAudio();
+                sfx.pop();
+                onHome();
+              }}
+            >
+              <HomeIcon className="h-full w-full" />
+            </button>
+            {/* small + boring on purpose: a parent control, not a toy */}
+            <button
+              aria-label={muted ? "Unmute" : "Mute"}
+              className="toy-btn pointer-events-auto h-11 w-11 bg-white/70 p-2"
+              style={{ borderRadius: 14 }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                sfx.unlockAudio();
+                const next = !muted;
+                sfx.setMuted(next);
+                setMutedUI(next);
+                if (!next) sfx.pop();
+              }}
+            >
+              <SpeakerIcon muted={muted} className="h-full w-full" />
+            </button>
+          </div>
           <div key={targetColor.id} className="toy-pill boing flex items-center gap-1.5 px-4 py-1.5">
             <svg viewBox="-52 -62 104 66" className="h-10 w-[68px]" aria-hidden>
               <CarShape main={targetColor.main} dark={targetColor.dark} />
@@ -991,32 +1010,34 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
           </div>
         </div>
 
+        {/* split controls: left thumb = horn + turbo, right thumb = jump,
+            so the turbo+jump backflip combo is an easy two-thumb move */}
         <div className="safe-b safe-x absolute inset-x-0 bottom-0 flex items-end justify-between p-4 sm:p-6">
-          <button
-            aria-label="Honk"
-            className="toy-btn pointer-events-auto h-20 w-20 bg-[#ff922b] p-4"
-            style={{ borderRadius: 9999 }}
-            onPointerDown={() => {
-              sfx.unlockAudio();
-              sfx.voice(config.body);
-              scareRef.current();
-              const g = truckRef.current;
-              if (g) {
-                // remove + reflow so mashing re-triggers the flash
-                g.classList.remove("voice-flash");
-                void g.getBoundingClientRect();
-                g.classList.add("voice-flash");
-                if (flashTimer.current) clearTimeout(flashTimer.current);
-                flashTimer.current = setTimeout(() => g.classList.remove("voice-flash"), 1000);
-              }
-            }}
-          >
-            <HornIcon className="h-full w-full" />
-          </button>
           <div className="flex items-end gap-4 sm:gap-5">
             <button
+              aria-label="Honk"
+              className="toy-btn pointer-events-auto h-20 w-20 bg-[#ff922b] p-4"
+              style={{ borderRadius: 9999 }}
+              onPointerDown={() => {
+                sfx.unlockAudio();
+                sfx.voice(config.body);
+                scareRef.current();
+                const g = truckRef.current;
+                if (g) {
+                  // remove + reflow so mashing re-triggers the flash
+                  g.classList.remove("voice-flash");
+                  void g.getBoundingClientRect();
+                  g.classList.add("voice-flash");
+                  if (flashTimer.current) clearTimeout(flashTimer.current);
+                  flashTimer.current = setTimeout(() => g.classList.remove("voice-flash"), 1000);
+                }
+              }}
+            >
+              <HornIcon className="h-full w-full" />
+            </button>
+            <button
               aria-label="Turbo boost"
-              className={`toy-btn pointer-events-auto h-20 w-20 p-3.5 ${turboUI === "active" ? "turbo-glow" : ""}`}
+              className={`toy-btn pointer-events-auto h-24 w-24 p-4 ${turboUI === "active" ? "turbo-glow" : ""}`}
               style={{
                 borderRadius: 9999,
                 background:
@@ -1039,26 +1060,28 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
             >
               <BoltIcon className="h-full w-full" />
             </button>
-            <button
-              aria-label="Jump"
-              className="toy-btn pointer-events-auto h-24 w-24 bg-[#4dabf7] p-5"
-              style={{ borderRadius: 9999 }}
-              onPointerDown={() => {
-                // no stopPropagation: jumping also feeds the gas, which feels right
-                jumpAt.current = performance.now();
-              }}
-            >
-              <UpIcon className="h-full w-full" />
-            </button>
-            <button
-              aria-label="Gas pedal"
-              className={`toy-btn pointer-events-auto h-28 w-28 bg-[#51cf66] p-7 ${started ? "" : "pulse-ring"}`}
-              style={{ borderRadius: 9999 }}
-            >
-              <PlayIcon className="h-full w-full" />
-            </button>
           </div>
+          <button
+            aria-label="Jump"
+            className="toy-btn pointer-events-auto h-28 w-28 bg-[#4dabf7] p-6"
+            style={{ borderRadius: 9999 }}
+            onPointerDown={() => {
+              // no stopPropagation: jumping also feeds the gas, which feels right
+              jumpAt.current = performance.now();
+            }}
+          >
+            <UpIcon className="h-full w-full" />
+          </button>
         </div>
+
+        {/* first-visit hint: pulsing touch point, gone after the first press */}
+        {!started && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-[24%] flex justify-center">
+            <div className="pulse-ring flex h-16 w-16 items-center justify-center rounded-full border-4 border-[#1d2b4f] bg-white/90">
+              <div className="h-5 w-5 rounded-full bg-[#1d2b4f]" />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -3,9 +3,9 @@
 import { useRef, useState } from "react";
 import type { TruckConfig } from "@/lib/trucks";
 import { BODIES, DECALS, PALETTE, WHEELS, cycle, randomTruck } from "@/lib/trucks";
-import { pop, unlockAudio, voice, whoosh } from "@/lib/audio";
+import { isMuted, pop, setMuted, unlockAudio, voice, whoosh } from "@/lib/audio";
 import { MonsterTruck } from "./TruckArt";
-import { CloudArt, DiceIcon, FlameIcon, PlayIcon, SunArt, TruckIcon, WheelIcon } from "./icons";
+import { CloudArt, DiceIcon, FlameIcon, PlayIcon, SpeakerIcon, SunArt, TruckIcon, WheelIcon } from "./icons";
 
 type Props = {
   trucks: TruckConfig[];

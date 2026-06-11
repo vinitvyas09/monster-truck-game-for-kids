@@ -126,6 +126,31 @@ export function StarIcon({ className, fill = "#ffd43b" }: IconProps & { fill?: s
   );
 }
 
+export function SpeakerIcon({ className, muted }: IconProps & { muted: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        d="M4 9.5 L8 9.5 L13 5 L13 19 L8 14.5 L4 14.5 Z"
+        fill="#fff"
+        stroke={NAVY}
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+      />
+      {muted ? (
+        <path d="M16 9.5 L21 14.5 M21 9.5 L16 14.5" fill="none" stroke={NAVY} strokeWidth={2.2} strokeLinecap="round" />
+      ) : (
+        <path
+          d="M16.5 9 Q18.5 12 16.5 15 M19 6.5 Q22 12 19 17.5"
+          fill="none"
+          stroke={NAVY}
+          strokeWidth={1.8}
+          strokeLinecap="round"
+        />
+      )}
+    </svg>
+  );
+}
+
 export function UpIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>
