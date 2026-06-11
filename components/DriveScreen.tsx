@@ -28,8 +28,12 @@ const WASH_X = 21.5 * SEG;
 const SCALE = 0.92;
 const HALF_BASE = 85 * SCALE; // axle distance from truck center
 const R_S = WHEEL_R * SCALE;
-const MAX_SPEED = 520; // brisk base pace; still below the 560 backflip threshold so flips stay turbo-only
-const TURBO_SPEED = 950;
+const CRUISE_SPEED = 520; // reached almost immediately when holding
+const WIND_MAX = 1300; // 2.5x cruise: keep holding and the truck keeps winding up
+const WIND_TIME = 7; // seconds of holding to reach full windup
+const TURBO_FLOOR = 900; // turbo from a standstill still rockets
+const TURBO_CAP = 1700; // turbo = 3x current speed, clamped to stay renderable
+const FLIP_SPEED = 560; // above this, jumps and ramp launches somersault
 const GRAVITY = 1350;
 const BALL_R = 34;
 
@@ -224,13 +228,18 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
   const ballRef = useRef<SVGGElement>(null);
 
   const gasPts = useRef<Set<number>>(new Set());
-  const turboRef = useRef<{ phase: TurboPhase; until: number }>({ phase: "ready", until: 0 });
+  const turboRef = useRef<{ phase: TurboPhase; until: number; boostTo: number }>({
+    phase: "ready",
+    until: 0,
+    boostTo: 0,
+  });
   const targetRef = useRef(targetColor);
   const starsRef = useRef(stars); // mount-time copy; the loop owns it from here
   const crushedRef = useRef<Set<number>>(new Set());
   const crushedBusRef = useRef<Set<number>>(new Set());
   const rescuedRef = useRef<Set<number>>(new Set());
   const truckSXRef = useRef(300);
+  const flashRef = useRef<HTMLDivElement>(null);
   const scareRef = useRef<() => void>(() => {});
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const jumpAt = useRef(0); // timestamp of last jump press; buffered so mashing pogo-hops on landing
@@ -260,8 +269,8 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
     const st = {
       off: 0, speed: 0, y: BASE - R_S, vy: 0, ang: 0, wheelA: 0,
       smokeT: 0, flameT: 0, fleckT: 0, foamT: 0,
-      airborne: false, airT: 0, liftSpeed: 0, flipping: false, flipDelay: 0.08, flipDur: 0.4, jumped: false, shock: false,
-      mud: 0, lastSplat: 0, inWash: false, puntCd: 0, streakT: 0,
+      airborne: false, airT: 0, liftSpeed: 0, flipping: false, flipsN: 0, flipT0: 0.08, flipT1: 0.53, jumped: false, shock: false,
+      mud: 0, lastSplat: 0, inWash: false, puntCd: 0, streakT: 0, trailT: 0, windT: 0,
     };
     let comboN = 0;
     let lastCrush = 0;
@@ -351,6 +360,48 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
       wrap.appendChild(el);
       fx.appendChild(wrap);
       setTimeout(() => wrap.remove(), 350);
+    }
+
+    /** One firework bloom: an even radial burst with a white flash core. */
+    function bloom(x: number, y: number, color: string) {
+      const flashWrap = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      flashWrap.style.transform = `translate(${x}px, ${y}px)`;
+      const core = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      core.setAttribute("r", "26");
+      core.setAttribute("fill", "#ffffff");
+      core.classList.add("fx-ring");
+      flashWrap.appendChild(core);
+      fx.appendChild(flashWrap);
+      setTimeout(() => flashWrap.remove(), 700);
+      const m = 12;
+      for (let i = 0; i < m; i++) {
+        const wrap = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        wrap.style.transform = `translate(${x}px, ${y}px)`;
+        const el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        el.setAttribute("r", String(4 + (i % 3) * 2));
+        el.setAttribute("fill", i % 3 === 2 ? "#ffffff" : color);
+        const a = (i / m) * Math.PI * 2;
+        const d = 95 + Math.random() * 45;
+        el.classList.add("fx-pop");
+        el.style.setProperty("--dx", `${(Math.cos(a) * d).toFixed(0)}px`);
+        el.style.setProperty("--dy", `${(Math.sin(a) * d).toFixed(0)}px`);
+        el.style.setProperty("--rot", "0deg");
+        wrap.appendChild(el);
+        fx.appendChild(wrap);
+        setTimeout(() => wrap.remove(), 800);
+      }
+    }
+
+    /** Staggered volley of sky fireworks (kept in the always-visible center band). */
+    function fireworks(count: number) {
+      for (let k = 0; k < count; k++) {
+        setTimeout(() => {
+          const x = 330 + Math.random() * 340;
+          const y = 70 + Math.random() * 160;
+          bloom(x, y, PALETTE[(Math.random() * PALETTE.length) | 0].main);
+          sfx.fireworkPop();
+        }, k * 170);
+      }
     }
 
     /** Every visible car/bus hops, like the ground itself bounced them. */
@@ -467,6 +518,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
       if (tb.phase === "active" && now >= tb.until) {
         tb.phase = "charging";
         tb.until = now + 4500;
+        tb.boostTo = 0;
         setTurboUI("charging");
       } else if (tb.phase === "charging" && now >= tb.until) {
         tb.phase = "ready";
@@ -474,10 +526,18 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
         setTurboUI("ready");
       }
       const turbo = tb.phase === "active";
+      // turbo means 3x whatever speed you had when you hit it
+      if (turbo && tb.boostTo === 0) {
+        tb.boostTo = Math.min(TURBO_CAP, Math.max(TURBO_FLOOR, st.speed * 3));
+      }
 
       const gas = gasPts.current.size > 0;
-      const targetSpeed = turbo ? TURBO_SPEED : gas ? MAX_SPEED : 0;
-      const rate = turbo ? 1150 : gas ? 520 : 430;
+      // keep holding and the truck winds up well past cruise speed
+      if (gas || turbo) st.windT = Math.min(WIND_TIME, st.windT + dt);
+      else st.windT = Math.max(0, st.windT - 2.5 * dt);
+      const gasTarget = CRUISE_SPEED + (WIND_MAX - CRUISE_SPEED) * (st.windT / WIND_TIME);
+      const targetSpeed = turbo ? tb.boostTo : gas ? gasTarget : 0;
+      const rate = turbo ? 1560 : gas ? 520 : 430;
       st.speed =
         st.speed < targetSpeed
           ? Math.min(targetSpeed, st.speed + rate * dt)
@@ -492,25 +552,40 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
       const rgy = gy(rearX);
       const targetY = (fgy + rgy) / 2 - R_S;
 
-      // --- jump button: launch off the ground (buffered 600ms => mash = pogo) ---
+      // --- jump button (buffered 600ms => mash = pogo) ---
       // Must run BEFORE physics + the grounded check, or this frame's touchdown
       // logic cancels the launch instantly and the jump shrinks to a spring hop.
-      if (jumpAt.current && !st.airborne && now - jumpAt.current < 600) {
-        jumpAt.current = 0;
-        st.airborne = true;
-        st.airT = 0;
-        st.liftSpeed = st.speed;
-        st.flipping = st.speed > 560; // turbo + jump = backflip anywhere
-        st.flipDelay = 0.24; // rise first, somersault around the apex
-        st.flipDur = 0.62;
-        st.jumped = true;
-        // turbo jumps launch higher; keep upward momentum off ramps
-        st.vy = Math.max(-1100, Math.min(st.vy, 0) - (turbo ? 870 : 750));
-        sfx.jump();
-        wiggleG.classList.remove("jump-stretch");
-        void wiggleG.getBBox();
-        wiggleG.classList.add("jump-stretch");
-        setTimeout(() => wiggleG.classList.remove("jump-stretch"), 350);
+      if (jumpAt.current && now - jumpAt.current < 600) {
+        if (!st.airborne) {
+          jumpAt.current = 0;
+          st.airborne = true;
+          st.airT = 0;
+          st.liftSpeed = st.speed;
+          st.flipping = st.speed > FLIP_SPEED; // fast jumps somersault
+          st.jumped = true;
+          // turbo jumps launch higher; keep upward momentum off ramps
+          st.vy = Math.max(-1100, Math.min(st.vy, 0) - (turbo ? 870 : 750));
+          st.flipsN = st.flipping ? 1 : 0;
+          // rotation window: rise first, finish the spin(s) before ~85% of flight
+          st.flipT0 = 0.22;
+          st.flipT1 = Math.max(0.6, (0.85 * (2 * Math.abs(st.vy))) / GRAVITY);
+          sfx.jump();
+          wiggleG.classList.remove("jump-stretch");
+          void wiggleG.getBBox();
+          wiggleG.classList.add("jump-stretch");
+          setTimeout(() => wiggleG.classList.remove("jump-stretch"), 350);
+        } else if (
+          // pressing jump again mid-somersault adds another flip (up to 3) when
+          // there is enough flight left to land wheels-down — never inverted
+          st.flipping &&
+          st.flipsN < 3 &&
+          (st.flipT1 - st.airT) / (st.flipsN + 1) >= 0.26
+        ) {
+          jumpAt.current = 0;
+          st.flipsN += 1;
+          sfx.zing(st.flipsN);
+          spawnFx(truckSX, st.y - 60, ["#ffd43b", "#ffffff"], 8, 90);
+        }
       }
 
       if (st.airborne) {
@@ -538,20 +613,29 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
         st.airborne = true;
         st.airT = 0;
         st.liftSpeed = st.speed;
-        st.flipping = st.liftSpeed > 560;
-        st.flipDelay = 0.08;
-        st.flipDur = 0.45;
+        st.flipping = st.liftSpeed > FLIP_SPEED;
+        st.flipsN = st.flipping ? 1 : 0;
+        st.flipT0 = 0.08;
+        st.flipT1 = 0.53;
       }
       if (st.airborne) {
         st.airT += dt;
         // whistle only on real air, not bump hops (idempotent start)
         if (st.airT > 0.12 && (st.liftSpeed > 330 || st.jumped)) sfx.whistleStart();
         sfx.whistleSet(st.vy);
-        if (st.flipping) {
-          // smoothstepped rotation, delayed so the somersault happens up high
-          const q = Math.min(1, Math.max(0, (st.airT - st.flipDelay) / st.flipDur));
+        if (st.flipping && st.flipsN > 0) {
+          // smoothstepped rotation, delayed so the somersault happens up high;
+          // always completes N x 360 before touchdown => never lands inverted
+          const q = Math.min(1, Math.max(0, (st.airT - st.flipT0) / (st.flipT1 - st.flipT0)));
           const e = q * q * (3 - 2 * q);
-          visualAng = st.ang - 360 * e;
+          visualAng = st.ang - 360 * st.flipsN * e;
+          if (st.flipsN >= 2) {
+            st.trailT += dt;
+            if (st.trailT > 0.05) {
+              st.trailT = 0;
+              spawnFx(truckSX, st.y - 30, [carColor(st.flipsN * 7).main, "#ffffff"], 2, 50);
+            }
+          }
         }
         if (grounded) {
           // touchdown
@@ -585,13 +669,22 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
               st.shock = true; // flatten anything close (applied below, once cars are placed)
             }
             if (st.flipping) {
-              addStars(2, truckSX, st.y - 60);
+              addStars(2 * st.flipsN, truckSX, st.y - 60);
               spawnFx(truckSX, st.y - 130, PALETTE.map((p) => p.main), 20, 190);
+              if (st.flipsN >= 2) {
+                // double/triple flip: full fireworks show
+                sfx.fanfare();
+                flashRef.current?.classList.remove("sky-flash");
+                void flashRef.current?.offsetWidth;
+                flashRef.current?.classList.add("sky-flash");
+                fireworks(st.flipsN === 2 ? 5 : 9);
+              }
             }
           } else if (st.airT > 0.1) {
             sfx.slam(false);
           }
           st.flipping = false;
+          st.flipsN = 0;
           st.jumped = false;
         }
       }
@@ -860,7 +953,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
         }
       }
 
-      sfx.engineSet(st.speed / MAX_SPEED, turbo);
+      sfx.engineSet(st.speed / CRUISE_SPEED, turbo);
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
@@ -983,6 +1076,9 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
         </g>
         <g ref={fxRef} />
       </svg>
+
+      {/* multi-flip landing: brief white sky flash */}
+      <div ref={flashRef} className="pointer-events-none absolute inset-0 bg-white opacity-0" />
 
       {/* UI overlay */}
       <div className="pointer-events-none absolute inset-0">
