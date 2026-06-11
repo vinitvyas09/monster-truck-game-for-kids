@@ -29,7 +29,7 @@ const SCALE = 0.92;
 const HALF_BASE = 85 * SCALE; // axle distance from truck center
 const R_S = WHEEL_R * SCALE;
 const MAX_SPEED = 430;
-const TURBO_SPEED = 780;
+const TURBO_SPEED = 950;
 const GRAVITY = 1350;
 const BALL_R = 34;
 
@@ -255,9 +255,11 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
     const st = {
       off: 0, speed: 0, y: BASE - R_S, vy: 0, ang: 0, wheelA: 0,
       smokeT: 0, flameT: 0, fleckT: 0, foamT: 0,
-      airborne: false, airT: 0, liftSpeed: 0, flipping: false, flipDur: 0.4, jumped: false, shock: false,
-      mud: 0, lastSplat: 0, inWash: false, puntCd: 0,
+      airborne: false, airT: 0, liftSpeed: 0, flipping: false, flipDelay: 0.08, flipDur: 0.4, jumped: false, shock: false,
+      mud: 0, lastSplat: 0, inWash: false, puntCd: 0, streakT: 0,
     };
+    let comboN = 0;
+    let lastCrush = 0;
     const ball = { mode: "idle" as "idle" | "fly", wx: BALL_OFF, y: 0, vx: 0, vy: 0, rot: 0, squash: 0 };
     let raf = 0;
     let last = performance.now();
@@ -311,6 +313,62 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
       setTimeout(() => wrap.remove(), ttl);
     }
 
+    /** Expanding dust shockwave ring at a landing point. */
+    function ring(x: number, y: number, big: boolean) {
+      for (let i = 0; i < (big ? 2 : 1); i++) {
+        const wrap = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        wrap.style.transform = `translate(${x}px, ${y}px)`;
+        const el = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+        el.setAttribute("rx", String(big ? 160 : 115));
+        el.setAttribute("ry", String(big ? 32 : 22));
+        el.setAttribute("fill", "none");
+        el.setAttribute("stroke", i ? "#e7d3b8" : "#c9a276");
+        el.setAttribute("stroke-width", String(big ? 11 : 8));
+        el.classList.add("fx-ring");
+        if (i) el.style.animationDelay = "0.08s";
+        wrap.appendChild(el);
+        fx.appendChild(wrap);
+        setTimeout(() => wrap.remove(), 750);
+      }
+    }
+
+    /** Horizontal speed streak (turbo). */
+    function streak(x: number, y: number) {
+      const wrap = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      wrap.style.transform = `translate(${x}px, ${y}px)`;
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      el.setAttribute("width", String(50 + Math.random() * 60));
+      el.setAttribute("height", "5");
+      el.setAttribute("rx", "2.5");
+      el.setAttribute("fill", "#ffffff");
+      el.setAttribute("opacity", "0.75");
+      el.classList.add("fx-streak");
+      wrap.appendChild(el);
+      fx.appendChild(wrap);
+      setTimeout(() => wrap.remove(), 350);
+    }
+
+    /** Every visible car/bus hops, like the ground itself bounced them. */
+    function hopCars() {
+      const targets = [...cars, busG];
+      for (const el of targets) {
+        if (el.style.display === "none") continue;
+        el.style.setProperty("--hopd", `${(Math.random() * 0.14).toFixed(2)}s`);
+        el.classList.remove("scared");
+        void el.getBoundingClientRect();
+        el.classList.add("scared");
+        setTimeout(() => el.classList.remove("scared"), 700);
+      }
+    }
+
+    function shake(amp: number) {
+      svgEl.style.setProperty("--shake-amp", `${amp.toFixed(1)}px`);
+      svgEl.classList.remove("shake");
+      void svgEl.getBBox();
+      svgEl.classList.add("shake");
+      setTimeout(() => svgEl.classList.remove("shake"), 440);
+    }
+
     function globs(x: number, y: number, count: number) {
       for (let i = 0; i < count; i++) {
         const wrap = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -343,10 +401,18 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
       setTargetColor(next);
     }
 
+    function comboCrunch() {
+      const t = performance.now();
+      comboN = t - lastCrush < 1300 ? comboN + 1 : 0;
+      lastCrush = t;
+      sfx.crunch();
+      if (comboN > 0) sfx.comboBlip(comboN); // rampage chains climb in pitch
+    }
+
     function crushCar(n: number, screenX: number, screenY: number, slot: SVGGElement) {
       crushedRef.current.add(n);
       slot.classList.add("crushed");
-      sfx.crunch();
+      comboCrunch();
       const c = carColor(n);
       let gained = 1;
       if (c.id === targetRef.current.id) {
@@ -363,7 +429,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
     function crushBus(k: number, screenX: number, screenY: number) {
       crushedBusRef.current.add(k);
       busG.classList.add("crushed");
-      sfx.crunch();
+      comboCrunch();
       sfx.slam(false);
       let gained = 2;
       if (targetRef.current.id === "yellow") {
@@ -384,16 +450,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
 
     scareRef.current = () => {
       sfx.squeaks();
-      const targets = [...cars, busG];
-      for (const el of targets) {
-        if (el.style.display === "none") continue;
-        el.style.setProperty("--hopd", `${(Math.random() * 0.14).toFixed(2)}s`);
-        // remove + reflow so mashing the horn re-triggers the hop
-        el.classList.remove("scared");
-        void el.getBoundingClientRect();
-        el.classList.add("scared");
-        setTimeout(() => el.classList.remove("scared"), 700);
-      }
+      hopCars();
     };
 
     function frame(now: number) {
@@ -415,7 +472,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
 
       const gas = gasPts.current.size > 0;
       const targetSpeed = turbo ? TURBO_SPEED : gas ? MAX_SPEED : 0;
-      const rate = turbo ? 900 : gas ? 420 : 380;
+      const rate = turbo ? 1150 : gas ? 420 : 380;
       st.speed =
         st.speed < targetSpeed
           ? Math.min(targetSpeed, st.speed + rate * dt)
@@ -439,9 +496,11 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
         st.airT = 0;
         st.liftSpeed = st.speed;
         st.flipping = st.speed > 560; // turbo + jump = backflip anywhere
-        st.flipDur = 0.8; // leisurely flip: jumps have real hang time
+        st.flipDelay = 0.24; // rise first, somersault around the apex
+        st.flipDur = 0.62;
         st.jumped = true;
-        st.vy = Math.max(-1050, Math.min(st.vy, 0) - 750); // keep upward momentum off ramps
+        // turbo jumps launch higher; keep upward momentum off ramps
+        st.vy = Math.max(-1100, Math.min(st.vy, 0) - (turbo ? 870 : 750));
         sfx.jump();
         wiggleG.classList.remove("jump-stretch");
         void wiggleG.getBBox();
@@ -475,7 +534,8 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
         st.airT = 0;
         st.liftSpeed = st.speed;
         st.flipping = st.liftSpeed > 560;
-        st.flipDur = 0.4;
+        st.flipDelay = 0.08;
+        st.flipDur = 0.45;
       }
       if (st.airborne) {
         st.airT += dt;
@@ -483,11 +543,14 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
         if (st.airT > 0.12 && (st.liftSpeed > 330 || st.jumped)) sfx.whistleStart();
         sfx.whistleSet(st.vy);
         if (st.flipping) {
-          const p = Math.min(1, st.airT / st.flipDur);
-          visualAng = st.ang - 360 * p;
+          // smoothstepped rotation, delayed so the somersault happens up high
+          const q = Math.min(1, Math.max(0, (st.airT - st.flipDelay) / st.flipDur));
+          const e = q * q * (3 - 2 * q);
+          visualAng = st.ang - 360 * e;
         }
         if (grounded) {
           // touchdown
+          const impact = st.vy; // downward speed at the moment of landing
           st.airborne = false;
           st.y = targetY;
           st.vy = Math.min(st.vy, 0);
@@ -498,8 +561,14 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
           const big = (st.airT > 0.36 && !st.jumped) || st.flipping || (st.jumped && st.airT > 1.25);
           if (st.airT > 0.18) {
             sfx.slam(big);
-            for (let i = 0; i < 9; i++) {
-              puff(truckSX - 130 + i * 32, st.y + R_S - 8, "fx-smoke", i % 2 ? "#cdb49a" : "#bba287", 9 + Math.random() * 6);
+            const dustN = big ? 13 : 9;
+            for (let i = 0; i < dustN; i++) {
+              puff(truckSX - 150 + i * (300 / dustN), st.y + R_S - 8, "fx-smoke", i % 2 ? "#cdb49a" : "#bba287", 9 + Math.random() * 7);
+            }
+            ring(truckSX, st.y + R_S - 4, big);
+            hopCars(); // the whole world feels the THOOM
+            if (st.airT > 0.3 || big) {
+              shake(Math.min(17, 4 + impact * 0.013));
             }
             wiggleG.classList.remove("jump-stretch"); // never let the two transform animations fight
             wiggleG.classList.remove("slam-squash");
@@ -509,10 +578,6 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
             if (big) {
               sfx.cheer();
               st.shock = true; // flatten anything close (applied below, once cars are placed)
-              svgEl.classList.remove("shake");
-              void svgEl.getBBox();
-              svgEl.classList.add("shake");
-              setTimeout(() => svgEl.classList.remove("shake"), 420);
             }
             if (st.flipping) {
               addStars(2, truckSX, st.y - 60);
@@ -768,6 +833,11 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
           st.flameT = 0;
           puff(exX, exY, "fx-flame", Math.random() < 0.5 ? "#ff922b" : "#ffd43b", 8 + Math.random() * 5, 500);
         }
+        st.streakT += dt;
+        if (st.streakT > 0.05) {
+          st.streakT = 0;
+          streak(truckSX - 180 + Math.random() * 560, st.y - 200 + Math.random() * 240);
+        }
       } else if (st.speed > 30) {
         st.smokeT += dt;
         if (st.smokeT > 0.22) {
@@ -962,7 +1032,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
                   return;
                 }
                 tb.phase = "active";
-                tb.until = performance.now() + 2300;
+                tb.until = performance.now() + 2600;
                 setTurboUI("active");
                 sfx.whoosh();
               }}

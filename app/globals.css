@@ -282,23 +282,51 @@ body {
 }
 
 .shake {
-  animation: shake 0.4s linear;
+  animation: shake 0.42s linear;
 }
 @keyframes shake {
   0%, 100% {
     transform: translateY(0);
   }
   15% {
-    transform: translateY(9px);
+    transform: translateY(var(--shake-amp, 9px));
   }
   35% {
-    transform: translateY(-5px);
+    transform: translateY(calc(var(--shake-amp, 9px) * -0.55));
   }
   55% {
-    transform: translateY(4px);
+    transform: translateY(calc(var(--shake-amp, 9px) * 0.45));
   }
   75% {
-    transform: translateY(-2px);
+    transform: translateY(calc(var(--shake-amp, 9px) * -0.22));
+  }
+}
+
+.fx-ring {
+  animation: fxring 0.55s ease-out forwards;
+}
+@keyframes fxring {
+  from {
+    transform: scale(0.25);
+    opacity: 0.85;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.fx-streak {
+  animation: fxstreak 0.3s linear forwards;
+}
+@keyframes fxstreak {
+  from {
+    transform: translateX(0);
+    opacity: 0.75;
+  }
+  to {
+    transform: translateX(-280px);
+    opacity: 0;
   }
 }
 

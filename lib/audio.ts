@@ -191,12 +191,19 @@ export function jump() {
 
 export function slam(big: boolean) {
   if (big) {
-    tone("sine", 70, 0.35, 0.8, { slideTo: 28 });
-    noiseBurst(0.3, 400, 0.7);
+    tone("sine", 64, 0.45, 0.9, { slideTo: 24 });
+    tone("sine", 130, 0.2, 0.45, { slideTo: 50 });
+    noiseBurst(0.4, 380, 0.8);
   } else {
-    tone("sine", 90, 0.18, 0.4, { slideTo: 40 });
-    noiseBurst(0.14, 500, 0.35);
+    tone("sine", 85, 0.25, 0.6, { slideTo: 32 });
+    noiseBurst(0.18, 480, 0.45);
   }
+}
+
+/** Rising blip for rapid crush chains; pitch climbs with the combo count. */
+export function comboBlip(n: number) {
+  const f = 540 * Math.pow(1.16, Math.min(n, 8));
+  tone("triangle", f, 0.09, 0.3, { slideTo: f * 1.3, delay: 0.05 });
 }
 
 export function cheer() {
