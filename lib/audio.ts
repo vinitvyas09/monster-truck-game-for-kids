@@ -183,6 +183,12 @@ export function denied() {
   tone("triangle", 150, 0.09, 0.22, { slideTo: 110 });
 }
 
+/** Springy takeoff boing for the jump button. */
+export function jump() {
+  tone("sine", 240, 0.2, 0.4, { slideTo: 560 });
+  noiseBurst(0.07, 1200, 0.18, 500);
+}
+
 export function slam(big: boolean) {
   if (big) {
     tone("sine", 70, 0.35, 0.8, { slideTo: 28 });

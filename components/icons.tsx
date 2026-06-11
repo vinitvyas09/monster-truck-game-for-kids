@@ -126,6 +126,20 @@ export function StarIcon({ className, fill = "#ffd43b" }: IconProps & { fill?: s
   );
 }
 
+export function UpIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        d="M12 2.5 L21 12 L15.5 12 L15.5 21 L8.5 21 L8.5 12 L3 12 Z"
+        fill="#fff"
+        stroke={NAVY}
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function PlayIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>
