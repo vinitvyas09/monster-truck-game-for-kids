@@ -215,6 +215,18 @@ export function jump() {
   noiseBurst(0.07, 1200, 0.18, 500);
 }
 
+/** Rising zing when an extra mid-air flip is granted; higher each flip. */
+export function zing(n: number) {
+  const f = 700 + n * 200;
+  tone("triangle", f, 0.16, 0.32, { slideTo: f * 1.7 });
+}
+
+/** Single firework crackle-pop. */
+export function fireworkPop() {
+  noiseBurst(0.16, 3200, 0.32, 900);
+  tone("triangle", 1500, 0.3, 0.2, { slideTo: 480, delay: 0.03 });
+}
+
 export function slam(big: boolean) {
   if (big) {
     tone("sine", 64, 0.45, 0.9, { slideTo: 24 });

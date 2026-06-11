@@ -316,6 +316,18 @@ body {
   }
 }
 
+.sky-flash {
+  animation: skyflash 0.45s ease-out;
+}
+@keyframes skyflash {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 .fx-streak {
   animation: fxstreak 0.3s linear forwards;
 }
