@@ -250,7 +250,7 @@ export function DriveScreen({ config, onHome }: { config: TruckConfig; onHome: (
     const st = {
       off: 0, speed: 0, y: BASE - R_S, vy: 0, ang: 0, wheelA: 0,
       smokeT: 0, flameT: 0, fleckT: 0, foamT: 0,
-      airborne: false, airT: 0, liftSpeed: 0, flipping: false, jumped: false, shock: false,
+      airborne: false, airT: 0, liftSpeed: 0, flipping: false, flipDur: 0.4, jumped: false, shock: false,
       mud: 0, lastSplat: 0, inWash: false, puntCd: 0,
     };
     const ball = { mode: "idle" as "idle" | "fly", wx: BALL_OFF, y: 0, vx: 0, vy: 0, rot: 0, squash: 0 };
@@ -424,6 +424,26 @@ export function DriveScreen({ config, onHome }: { config: TruckConfig; onHome: (
       const fgy = gy(frontX);
       const rgy = gy(rearX);
       const targetY = (fgy + rgy) / 2 - R_S;
+
+      // --- jump button: launch off the ground (buffered 600ms => mash = pogo) ---
+      // Must run BEFORE physics + the grounded check, or this frame's touchdown
+      // logic cancels the launch instantly and the jump shrinks to a spring hop.
+      if (jumpAt.current && !st.airborne && now - jumpAt.current < 600) {
+        jumpAt.current = 0;
+        st.airborne = true;
+        st.airT = 0;
+        st.liftSpeed = st.speed;
+        st.flipping = st.speed > 560; // turbo + jump = backflip anywhere
+        st.flipDur = 0.8; // leisurely flip: jumps have real hang time
+        st.jumped = true;
+        st.vy = Math.max(-1050, Math.min(st.vy, 0) - 750); // keep upward momentum off ramps
+        sfx.jump();
+        wiggleG.classList.remove("jump-stretch");
+        void wiggleG.getBBox();
+        wiggleG.classList.add("jump-stretch");
+        setTimeout(() => wiggleG.classList.remove("jump-stretch"), 350);
+      }
+
       if (st.airborne) {
         st.vy += GRAVITY * dt;
         st.y += st.vy * dt;
@@ -435,25 +455,13 @@ export function DriveScreen({ config, onHome }: { config: TruckConfig; onHome: (
           st.vy = Math.min(st.vy, 0);
         }
       }
-      const targetAng = (Math.atan2(fgy - rgy, HALF_BASE * 2) * 180) / Math.PI;
-      st.ang += (targetAng - st.ang) * Math.min(1, 10 * dt);
+      // on the ground, pitch with the slope; in the air, pitch with the arc
+      // (nose up rising, nose down falling) instead of wiggling with the
+      // terrain profile scrolling underneath
+      const groundAng = (Math.atan2(fgy - rgy, HALF_BASE * 2) * 180) / Math.PI;
+      const targetAng = st.airborne ? Math.max(-14, Math.min(16, st.vy * 0.022)) : groundAng;
+      st.ang += (targetAng - st.ang) * Math.min(1, (st.airborne ? 6 : 10) * dt);
       const grounded = st.airborne ? st.y >= targetY : targetY - st.y < 26;
-
-      // --- jump button: launch off the ground (buffered 600ms => mash = pogo) ---
-      if (jumpAt.current && !st.airborne && now - jumpAt.current < 600) {
-        jumpAt.current = 0;
-        st.airborne = true;
-        st.airT = 0;
-        st.liftSpeed = st.speed;
-        st.flipping = st.speed > 560; // turbo + jump = backflip anywhere
-        st.jumped = true;
-        st.vy = Math.min(st.vy, 0) - 500; // keep upward momentum off ramps
-        sfx.jump();
-        wiggleG.classList.remove("jump-stretch");
-        void wiggleG.getBBox();
-        wiggleG.classList.add("jump-stretch");
-        setTimeout(() => wiggleG.classList.remove("jump-stretch"), 350);
-      }
 
       // --- big air: slide whistle up, backflip at turbo speed, slam landing ---
       let visualAng = st.ang;
@@ -462,6 +470,7 @@ export function DriveScreen({ config, onHome }: { config: TruckConfig; onHome: (
         st.airT = 0;
         st.liftSpeed = st.speed;
         st.flipping = st.liftSpeed > 560;
+        st.flipDur = 0.4;
       }
       if (st.airborne) {
         st.airT += dt;
@@ -469,7 +478,7 @@ export function DriveScreen({ config, onHome }: { config: TruckConfig; onHome: (
         if (st.airT > 0.12 && (st.liftSpeed > 330 || st.jumped)) sfx.whistleStart();
         sfx.whistleSet(st.vy);
         if (st.flipping) {
-          const p = Math.min(1, st.airT / 0.4);
+          const p = Math.min(1, st.airT / st.flipDur);
           visualAng = st.ang - 360 * p;
         }
         if (grounded) {
@@ -480,12 +489,14 @@ export function DriveScreen({ config, onHome }: { config: TruckConfig; onHome: (
           sfx.whistleStop();
           // plain jumps land with squash+dust; the BIG celebration stays reserved
           // for ramp flights, turbo flips, and jump combos with extra hang time
-          const big = (st.airT > 0.36 && !st.jumped) || st.flipping || (st.jumped && st.airT > 0.85);
+          // (a flat jump flies ~1.1s, so the combo gate sits just above that)
+          const big = (st.airT > 0.36 && !st.jumped) || st.flipping || (st.jumped && st.airT > 1.25);
           if (st.airT > 0.18) {
             sfx.slam(big);
             for (let i = 0; i < 9; i++) {
               puff(truckSX - 130 + i * 32, st.y + R_S - 8, "fx-smoke", i % 2 ? "#cdb49a" : "#bba287", 9 + Math.random() * 6);
             }
+            wiggleG.classList.remove("jump-stretch"); // never let the two transform animations fight
             wiggleG.classList.remove("slam-squash");
             void wiggleG.getBBox();
             wiggleG.classList.add("slam-squash");
