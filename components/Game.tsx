@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { TruckConfig } from "@/lib/trucks";
-import { DEFAULT_GARAGE, loadGarage, saveGarage } from "@/lib/trucks";
+import type { SpeedMode, TruckConfig } from "@/lib/trucks";
+import { DEFAULT_GARAGE, loadGarage, loadSpeedMode, saveGarage, saveSpeedMode } from "@/lib/trucks";
 import { GarageScreen } from "./GarageScreen";
 import { DriveScreen } from "./DriveScreen";
 
@@ -12,6 +12,7 @@ export default function Game() {
   const [active, setActive] = useState(0);
   // stars live here so an accidental trip to the garage never wipes the count
   const [stars, setStars] = useState(0);
+  const [speedMode, setSpeedMode] = useState<SpeedMode>("wild");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -20,6 +21,8 @@ export default function Game() {
       setTrucks(saved.trucks);
       setActive(saved.active);
     }
+    const mode = loadSpeedMode();
+    if (mode) setSpeedMode(mode);
     setReady(true);
   }, []);
 
@@ -38,12 +41,18 @@ export default function Game() {
     if (ready) saveGarage({ trucks, active });
   }, [trucks, active, ready]);
 
+  useEffect(() => {
+    if (ready) saveSpeedMode(speedMode);
+  }, [speedMode, ready]);
+
   if (!ready) return <div className="garage-sky h-full w-full" />;
 
   return screen === "garage" ? (
     <GarageScreen
       trucks={trucks}
       active={active}
+      speedMode={speedMode}
+      onSpeedMode={setSpeedMode}
       onSelect={setActive}
       onChange={(t) => setTrucks((ts) => ts.map((x, i) => (i === active ? t : x)))}
       onGo={() => setScreen("drive")}
@@ -51,6 +60,7 @@ export default function Game() {
   ) : (
     <DriveScreen
       config={trucks[active]}
+      mode={speedMode}
       stars={stars}
       onStars={setStars}
       onHome={() => setScreen("garage")}

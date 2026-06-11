@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { PaletteEntry, TruckConfig } from "@/lib/trucks";
-import { PALETTE } from "@/lib/trucks";
+import type { PaletteEntry, SpeedMode, TruckConfig } from "@/lib/trucks";
+import { PALETTE, SPEED_TUNE } from "@/lib/trucks";
 import * as sfx from "@/lib/audio";
 import { AXLE_Y, EXHAUST, TruckArt, WHEEL_R, starPoints } from "./TruckArt";
 import { BoltIcon, CloudArt, HomeIcon, HornIcon, SpeakerIcon, StarIcon, SunArt, UpIcon } from "./icons";
@@ -28,12 +28,11 @@ const WASH_X = 21.5 * SEG;
 const SCALE = 0.92;
 const HALF_BASE = 85 * SCALE; // axle distance from truck center
 const R_S = WHEEL_R * SCALE;
-const CRUISE_SPEED = 520; // reached almost immediately when holding
-const WIND_MAX = 1300; // 2.5x cruise: keep holding and the truck keeps winding up
+const CRUISE_SPEED = 520; // reached almost immediately when holding; the floor is never boring
 const WIND_TIME = 7; // seconds of holding to reach full windup
 const TURBO_FLOOR = 900; // turbo from a standstill still rockets
-const TURBO_CAP = 1700; // turbo = 3x current speed, clamped to stay renderable
 const FLIP_SPEED = 560; // above this, jumps and ramp launches somersault
+// windup max + turbo cap come from the parent speed setting (SPEED_TUNE[mode])
 const GRAVITY = 1350;
 const BALL_R = 34;
 
@@ -201,12 +200,14 @@ type TurboPhase = "ready" | "active" | "charging";
 
 type DriveProps = {
   config: TruckConfig;
+  mode: SpeedMode;
   stars: number;
   onStars: (n: number) => void;
   onHome: () => void;
 };
 
-export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
+export function DriveScreen({ config, mode, stars, onStars, onHome }: DriveProps) {
+  const tune = SPEED_TUNE[mode]; // fixed for the whole drive session (set in the garage)
   const [targetColor, setTargetColor] = useState<PaletteEntry>(() => carColor(1 + Math.floor(Math.random() * 3)));
   const [turboUI, setTurboUI] = useState<TurboPhase>("ready");
   const [started, setStarted] = useState(false);
@@ -528,14 +529,14 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
       const turbo = tb.phase === "active";
       // turbo means 3x whatever speed you had when you hit it
       if (turbo && tb.boostTo === 0) {
-        tb.boostTo = Math.min(TURBO_CAP, Math.max(TURBO_FLOOR, st.speed * 3));
+        tb.boostTo = Math.min(tune.turboCap, Math.max(TURBO_FLOOR, st.speed * 3));
       }
 
       const gas = gasPts.current.size > 0;
       // keep holding and the truck winds up well past cruise speed
       if (gas || turbo) st.windT = Math.min(WIND_TIME, st.windT + dt);
       else st.windT = Math.max(0, st.windT - 2.5 * dt);
-      const gasTarget = CRUISE_SPEED + (WIND_MAX - CRUISE_SPEED) * (st.windT / WIND_TIME);
+      const gasTarget = CRUISE_SPEED + (tune.windMax - CRUISE_SPEED) * (st.windT / WIND_TIME);
       const targetSpeed = turbo ? tb.boostTo : gas ? gasTarget : 0;
       const rate = turbo ? 1560 : gas ? 520 : 430;
       st.speed =

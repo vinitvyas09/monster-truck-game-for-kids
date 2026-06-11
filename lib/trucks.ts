@@ -57,6 +57,35 @@ export function randomTruck(): TruckConfig {
   };
 }
 
+// Arena speed dial: scales the speed CEILINGS only — the floor stays fun.
+export const SPEED_MODES = ["zippy", "wild", "insane"] as const;
+export type SpeedMode = (typeof SPEED_MODES)[number];
+
+export const SPEED_TUNE: Record<SpeedMode, { windMax: number; turboCap: number }> = {
+  zippy: { windMax: 950, turboCap: 1250 },
+  wild: { windMax: 1300, turboCap: 1700 },
+  insane: { windMax: 1600, turboCap: 2000 },
+};
+
+const SPEED_KEY = "monster-garage-speed";
+
+export function loadSpeedMode(): SpeedMode | null {
+  try {
+    const raw = localStorage.getItem(SPEED_KEY);
+    return (SPEED_MODES as readonly string[]).includes(raw ?? "") ? (raw as SpeedMode) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveSpeedMode(mode: SpeedMode) {
+  try {
+    localStorage.setItem(SPEED_KEY, mode);
+  } catch {
+    // best-effort
+  }
+}
+
 const STORAGE_KEY = "monster-garage-v1";
 
 export type GarageSave = { trucks: TruckConfig[]; active: number };

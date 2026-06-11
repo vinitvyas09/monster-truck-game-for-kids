@@ -1,21 +1,23 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { TruckConfig } from "@/lib/trucks";
-import { BODIES, DECALS, PALETTE, WHEELS, cycle, randomTruck } from "@/lib/trucks";
+import type { SpeedMode, TruckConfig } from "@/lib/trucks";
+import { BODIES, DECALS, PALETTE, SPEED_MODES, WHEELS, cycle, randomTruck } from "@/lib/trucks";
 import { isMuted, pop, setMuted, unlockAudio, voice, whoosh } from "@/lib/audio";
 import { MonsterTruck } from "./TruckArt";
-import { CloudArt, DiceIcon, FlameIcon, PlayIcon, SpeakerIcon, SunArt, TruckIcon, WheelIcon } from "./icons";
+import { BoltIcon, CloudArt, DiceIcon, FlameIcon, PlayIcon, SpeakerIcon, SunArt, TruckIcon, WheelIcon } from "./icons";
 
 type Props = {
   trucks: TruckConfig[];
   active: number;
+  speedMode: SpeedMode;
+  onSpeedMode: (m: SpeedMode) => void;
   onSelect: (i: number) => void;
   onChange: (t: TruckConfig) => void;
   onGo: () => void;
 };
 
-export function GarageScreen({ trucks, active, onSelect, onChange, onGo }: Props) {
+export function GarageScreen({ trucks, active, speedMode, onSpeedMode, onSelect, onChange, onGo }: Props) {
   const [boing, setBoing] = useState(0);
   const [honking, setHonking] = useState(false);
   const [muted, setMutedUI] = useState(() => isMuted());
@@ -72,7 +74,7 @@ export function GarageScreen({ trucks, active, onSelect, onChange, onGo }: Props
         </div>
         <h1 className="game-title pt-1 text-center leading-none">MONSTER GARAGE</h1>
         <div className="flex shrink-0 items-start gap-2">
-          {/* small + boring on purpose: a parent control, not a toy */}
+          {/* parent corner: small + boring on purpose, not toys */}
           <button
             aria-label={muted ? "Unmute" : "Mute"}
             className="toy-btn h-11 w-11 bg-white/70 p-2"
@@ -86,6 +88,22 @@ export function GarageScreen({ trucks, active, onSelect, onChange, onGo }: Props
             }}
           >
             <SpeakerIcon muted={muted} className="h-full w-full" />
+          </button>
+          <button
+            aria-label={`Arena speed: ${speedMode}`}
+            className="toy-btn h-11 bg-white/70 px-2"
+            style={{ borderRadius: 14 }}
+            onPointerDown={() => {
+              unlockAudio();
+              pop();
+              onSpeedMode(cycle(SPEED_MODES, speedMode));
+            }}
+          >
+            <span className="flex items-center">
+              {SPEED_MODES.slice(0, SPEED_MODES.indexOf(speedMode) + 1).map((m) => (
+                <BoltIcon key={m} className="-ml-1.5 h-6 w-6 first:ml-0" />
+              ))}
+            </span>
           </button>
           <button
             aria-label="Surprise truck"
