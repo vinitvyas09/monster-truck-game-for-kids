@@ -18,6 +18,7 @@ type Props = {
 export function GarageScreen({ trucks, active, onSelect, onChange, onGo }: Props) {
   const [boing, setBoing] = useState(0);
   const [honking, setHonking] = useState(false);
+  const [muted, setMutedUI] = useState(() => isMuted());
   const honkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const truck = trucks[active];
 
@@ -70,13 +71,30 @@ export function GarageScreen({ trucks, active, onSelect, onChange, onGo }: Props
           ))}
         </div>
         <h1 className="game-title pt-1 text-center leading-none">MONSTER GARAGE</h1>
-        <button
-          aria-label="Surprise truck"
-          className="toy-btn h-16 w-16 shrink-0 bg-white/85 p-2.5 sm:h-[72px] sm:w-[72px]"
-          onPointerDown={() => tweak(randomTruck())}
-        >
-          <DiceIcon className="h-full w-full" />
-        </button>
+        <div className="flex shrink-0 items-start gap-2">
+          {/* small + boring on purpose: a parent control, not a toy */}
+          <button
+            aria-label={muted ? "Unmute" : "Mute"}
+            className="toy-btn h-11 w-11 bg-white/70 p-2"
+            style={{ borderRadius: 14 }}
+            onPointerDown={() => {
+              unlockAudio();
+              const next = !muted;
+              setMuted(next);
+              setMutedUI(next);
+              if (!next) pop();
+            }}
+          >
+            <SpeakerIcon muted={muted} className="h-full w-full" />
+          </button>
+          <button
+            aria-label="Surprise truck"
+            className="toy-btn h-16 w-16 bg-white/85 p-2.5 sm:h-[72px] sm:w-[72px]"
+            onPointerDown={() => tweak(randomTruck())}
+          >
+            <DiceIcon className="h-full w-full" />
+          </button>
+        </div>
       </div>
 
       {/* the truck on stage, wheels anchored to the grass horizon (the ground
