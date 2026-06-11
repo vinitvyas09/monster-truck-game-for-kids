@@ -247,7 +247,7 @@ function Wheel({ cx, style }: { cx: number; style: WheelId }) {
   );
 }
 
-export function TruckArt({ config }: { config: TruckConfig }) {
+export function TruckArt({ config, shadow = true }: { config: TruckConfig; shadow?: boolean }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const clipId = `truckclip${uid}`;
   const { main, dark } = colorOf(config.colorId);
@@ -260,7 +260,8 @@ export function TruckArt({ config }: { config: TruckConfig }) {
           <path d={path} />
         </clipPath>
       </defs>
-      <ellipse cx={180} cy={252} rx={138} ry={13} fill={NAVY} opacity={0.15} />
+      {/* the drive scene draws its own ground-tracking shadow instead */}
+      {shadow && <ellipse cx={180} cy={252} rx={138} ry={13} fill={NAVY} opacity={0.15} />}
       {/* exhaust pipes */}
       <g fill={METAL} stroke={NAVY} strokeWidth={4}>
         <rect x={58} y={46} width={13} height={46} rx={5} />

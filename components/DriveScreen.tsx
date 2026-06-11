@@ -28,7 +28,7 @@ const WASH_X = 21.5 * SEG;
 const SCALE = 0.92;
 const HALF_BASE = 85 * SCALE; // axle distance from truck center
 const R_S = WHEEL_R * SCALE;
-const MAX_SPEED = 430;
+const MAX_SPEED = 520; // brisk base pace; still below the 560 backflip threshold so flips stay turbo-only
 const TURBO_SPEED = 950;
 const GRAVITY = 1350;
 const BALL_R = 34;
@@ -65,6 +65,9 @@ const HILLS = buildHills();
 
 const carColor = (n: number): PaletteEntry =>
   PALETTE[(((n * 3 + 1) % PALETTE.length) + PALETTE.length) % PALETTE.length];
+
+// darker dirt patches so the ground visibly streams past at speed
+const SPECKLES = [180, 540, 760, 1240, 1610, 1950, 2380, 2700, 3050, 3290];
 
 const HEART_D = "M0 6 C -8 -4 -18 2 0 16 C 18 2 8 -4 0 6 Z";
 
@@ -215,6 +218,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
   const cloudsRef = useRef<SVGGElement>(null);
   const fxRef = useRef<SVGGElement>(null);
   const carRefs = useRef<(SVGGElement | null)[]>([]);
+  const shadowRef = useRef<SVGEllipseElement>(null);
   const busRef = useRef<SVGGElement>(null);
   const rescueRef = useRef<SVGGElement>(null);
   const ballRef = useRef<SVGGElement>(null);
@@ -473,7 +477,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
 
       const gas = gasPts.current.size > 0;
       const targetSpeed = turbo ? TURBO_SPEED : gas ? MAX_SPEED : 0;
-      const rate = turbo ? 1150 : gas ? 420 : 380;
+      const rate = turbo ? 1150 : gas ? 520 : 430;
       st.speed =
         st.speed < targetSpeed
           ? Math.min(targetSpeed, st.speed + rate * dt)
@@ -596,6 +600,15 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
         "transform",
         `translate(${truckSX.toFixed(1)} ${st.y.toFixed(1)}) rotate(${visualAng.toFixed(2)}) scale(${SCALE}) translate(-180 -${AXLE_Y})`
       );
+      // ground-tracking shadow: stays on the dirt and shrinks with altitude,
+      // so jump height is readable and the shadow never flies with the truck
+      const alt = Math.max(0, targetY - st.y);
+      const shScale = Math.max(0.35, 1 - alt / 480);
+      shadowRef.current?.setAttribute(
+        "transform",
+        `translate(${truckSX.toFixed(1)} ${((fgy + rgy) / 2).toFixed(1)}) scale(${shScale.toFixed(2)})`
+      );
+      shadowRef.current?.setAttribute("opacity", (0.16 * shScale).toFixed(3));
       st.wheelA = (st.wheelA + ((st.speed * dt) / R_S) * (180 / Math.PI)) % 360;
       for (const w of wheels) {
         w.setAttribute("transform", `rotate(${st.wheelA.toFixed(1)} ${w.dataset.cx} ${w.dataset.cy})`);
@@ -891,7 +904,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
         preserveAspectRatio="xMidYMax slice"
         aria-hidden
       >
-        <SunArt x={880} y={92} r={42} />
+        <SunArt x={760} y={116} r={40} />
         <g ref={cloudsRef}>
           {[0, PERIOD].map((o) => (
             <g key={o} transform={`translate(${o} 0)`}>
@@ -912,6 +925,17 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
             <g key={o} transform={`translate(${o} 0)`}>
               <path d={TERRAIN.fill} fill="#cd8447" />
               <path d={TERRAIN.edge} fill="none" stroke="#a05c2c" strokeWidth={8} strokeLinecap="round" />
+              {SPECKLES.map((x, i) => (
+                <ellipse
+                  key={x}
+                  cx={x}
+                  cy={gy(x) + 26 + (i % 3) * 14}
+                  rx={10 + (i % 4) * 4}
+                  ry={4 + (i % 3) * 1.5}
+                  fill="#b06a36"
+                  opacity={0.55}
+                />
+              ))}
               <g transform={`translate(0 ${BASE})`}>
                 <MudPit />
                 <WashArchBack />
@@ -919,6 +943,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
             </g>
           ))}
         </g>
+        <ellipse ref={shadowRef} rx={127} ry={12} fill={NAVY} opacity={0.16} />
         <g ref={rescueRef} style={{ display: "none" }}>
           <RescueCar />
         </g>
@@ -946,7 +971,7 @@ export function DriveScreen({ config, stars, onStars, onHome }: DriveProps) {
           transform={`translate(300 ${BASE - R_S}) rotate(0) scale(${SCALE}) translate(-180 -${AXLE_Y})`}
         >
           <g ref={wiggleRef}>
-            <TruckArt config={config} />
+            <TruckArt config={config} shadow={false} />
           </g>
         </g>
         <g ref={washFrontRef}>

@@ -78,17 +78,19 @@ export function HomeIcon({ className }: IconProps) {
 }
 
 export function HornIcon({ className }: IconProps) {
+  // classic squeeze-bulb horn (NOT a speaker shape - it gets mistaken for a mute button)
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden>
       <path
-        d="M3 9.5 L9 9.5 L15.5 4 L15.5 20 L9 14.5 L3 14.5 Z"
+        d="M8 12.2 L12 12.2 L18 8.6 Q19.6 7.6 19.6 9.5 L19.6 18.5 Q19.6 20.4 18 19.4 L12 15.8 L8 15.8 Z"
         fill="#fff"
         stroke={NAVY}
         strokeWidth={1.8}
         strokeLinejoin="round"
       />
+      <circle cx={5.4} cy={14} r={3.4} fill="#ffd43b" stroke={NAVY} strokeWidth={1.8} />
       <path
-        d="M18.5 8.5 Q20.5 12 18.5 15.5 M20.5 6 Q23.5 12 20.5 18"
+        d="M20 5.5 L21.6 3.6 M22 9 L23.6 8.2 M16.6 4.6 L17.4 2.6"
         fill="none"
         stroke={NAVY}
         strokeWidth={1.8}
